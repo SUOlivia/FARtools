@@ -4,13 +4,21 @@ A python script to *easily* edit and read .far archives from Guitar Hero Live
 ## Arguments
 
 `-h`    or  `--help`        to show the help text
+
 `-a`    or  `--add`         to add a new file to the archive
+
 `-rn`   or  `--rename`      to rename an already existing file in the archive
+
 `-rp`   or  `--replace`     to replace an already existing file in the archive
+
 `-ls`   or  `--listfiles`   to list the files in the archive
+
 `-c`    or  `--compress`    to compress the file (Currently only used when adding files in)
+
 `-x`    or  `--extract`     to extract a file from the archive
+
 `-FAR archive.far`          Archive to modify (Keep backups in case something goes wrong!!!)
+
 `-p FilePath` or `--path FilePath` Has multiple uses depending on the other arguments
 - The path of the new file in the case of `-a`
 - The path to the file to replace in the case of `-rp`
