@@ -35,7 +35,7 @@ args.add_argument('-p', '--path', action="store", dest="FilePath", type=str, hel
 args.add_argument('-f', '--file', action="store", dest="Replace", type=str, help="Path to the new file (Or the new path if your are renaming)")
 args.add_argument('-o', '--output', action="store", dest="Replace", type=str, help="Path to output the extracted file")
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     args.print_help()
     exit(0)
 parsed = args.parse_args()
