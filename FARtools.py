@@ -58,7 +58,7 @@ def ExtractFile(OutPath, HeaderPosition: int):
     
 
 
-def AddFile():
+def AddFile(FileData: bytes):
     os.lseek(FAR, DataStart, os.SEEK_SET)
     DataKeep = os.read(FAR, (FAR_Size - DataStart))
 
@@ -71,8 +71,8 @@ def AddFile():
         i+=1
 
     Compressed_Flag = 0x200000000 if compressed else 0x100000000
-    ReplaceBytes = b'\x00\x00' + zlibcomp.compress(Replace_data) + zlibcomp.flush() + b'\x00\x00' if compressed else Replace_data
-    ReplaceCompSize = len(ReplaceBytes) + 4 if compressed else len(ReplaceBytes)
+    FileData = b'\x00\x00' + zlibcomp.compress(FileData) + zlibcomp.flush() if compressed else FileData
+    ReplaceCompSize = len(FileData) + 2 if compressed else len(FileData)
 
     os.write(FAR, Replace_Size.to_bytes(0x08, 'big')) # Decompressed size
     os.write(FAR, ReplaceCompSize.to_bytes(0x08, 'big')) # Compressed size
@@ -80,7 +80,7 @@ def AddFile():
     os.write(FAR, (FAR_Size - DataStart).to_bytes(0x08, 'big')) # Offset
     os.write(FAR, Compressed_Flag.to_bytes(0x08, 'big')) # Decompressed flag
     os.write(FAR, DataKeep) # Writes back the already existing files
-    os.write(FAR, ReplaceBytes)
+    os.write(FAR, FileData)
     
     #Moving DataStart 0x120 bytes further
     os.lseek(FAR, 0x08, os.SEEK_SET)
@@ -90,16 +90,19 @@ def AddFile():
     os.write(FAR, (FileTable_Objects + 1).to_bytes(0x04, 'big'))
 
 
-def ReplaceFile(HeaderPos):
+def ReplaceFile(FileData: bytes, HeaderPos: int):
     os.lseek(FAR, HeaderPos + 0x100, os.SEEK_SET)
 
-    os.write(FAR, Replace_Size.to_bytes(8, 'big'))
-    os.write(FAR, Replace_Size.to_bytes(8, 'big'))
-    os.write(FAR, (FAR_Size - DataStart).to_bytes(8, 'big'))
-    os.lseek(FAR, 0x03, os.SEEK_CUR)
-    os.write(FAR, b'\x01')
+    FileData = b'\x00\x00' + zlibcomp.compress(FileData) + zlibcomp.flush() if compressed else FileData
+    ReplaceCompSize = len(FileData) + 2 if compressed else len(FileData)
+    
+    os.write(FAR, Replace_Size.to_bytes(8, 'big'))              # Decompressed size
+    os.write(FAR, ReplaceCompSize.to_bytes(8, 'big'))              # Compressed size
+    os.write(FAR, (FAR_Size - DataStart).to_bytes(8, 'big'))    # File data offset 
+    os.lseek(FAR, 0x03, os.SEEK_CUR)                            
+    os.write(FAR, b'\x02' if compressed else b'\x01')           # Compressed flag
     os.lseek(FAR, 0, os.SEEK_END)
-    os.write(FAR, Replace_data)
+    os.write(FAR, FileData)
     print("Injection Done successfully")
 
 def FindFile(Filename):
@@ -196,7 +199,7 @@ if add == True:
         Replace = True
         print("File already exists, replacing instead")
     else:
-        AddFile()
+        AddFile(Replace_data)
         os.fsync(FAR)
         [FileNames, FileTable_Objects, DataStart] = FARInit()
         if FindFile(FilePath)[0]:
@@ -207,8 +210,7 @@ if add == True:
         exit(0)
 
 if Replace == True:
-    print(FoundFile)
-    ReplaceFile(FoundFile[1])
+    ReplaceFile(Replace_data, FoundFile[1])
     print("File successfully replaced")
 
 

@@ -13,7 +13,7 @@ A python script to *easily* edit and read .far archives from Guitar Hero Live
 
 `-ls`   or  `--listfiles`   to list the files in the archive
 
-`-c`    or  `--compress`    to compress the file (Currently only used when adding files in)
+`-c`    or  `--compress`    to compress the file
 
 `-x`    or  `--extract`     to extract a file from the archive
 
