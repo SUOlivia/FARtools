@@ -21,11 +21,6 @@ import argparse
 import zlib
 from pathlib import PureWindowsPath
 
-# Usage: FAR.py file.far /path/to/file/in/far ReplaceFile
-#if len(sys.argv) < 3:
-#    print("Usage: FAR.py file.far path/to/file/in/far ReplaceFile")
-#    exit(0)
-
 args = argparse.ArgumentParser(description='Tools to easily add, replace and rename files in FAR archives.')
 
 args.add_argument('-a', '--add', action="store_true", default=False, dest="add", help="Add a new file to the archive")
@@ -76,7 +71,7 @@ def AddFile():
         i+=1
 
     Compressed_Flag = 0x200000000 if compressed else 0x100000000
-    ReplaceBytes = b'\x00\x00' + zlibcomp.compress(os.read(Replace, Replace_Size)) + zlibcomp.flush() + b'\x00\x00' if compressed else os.read(Replace, Replace_Size)
+    ReplaceBytes = b'\x00\x00' + zlibcomp.compress(Replace_data) + zlibcomp.flush() + b'\x00\x00' if compressed else Replace_data
     ReplaceCompSize = len(ReplaceBytes) + 4 if compressed else len(ReplaceBytes)
 
     os.write(FAR, Replace_Size.to_bytes(0x08, 'big')) # Decompressed size
@@ -104,7 +99,7 @@ def ReplaceFile(HeaderPos):
     os.lseek(FAR, 0x03, os.SEEK_CUR)
     os.write(FAR, b'\x01')
     os.lseek(FAR, 0, os.SEEK_END)
-    os.write(FAR, os.read(Replace, Replace_Size))
+    os.write(FAR, Replace_data)
     print("Injection Done successfully")
 
 def FindFile(Filename):
@@ -169,11 +164,13 @@ FAR_Size = os.path.getsize(FAR)
 FAR = os.open(FAR, os.O_RDWR | os.O_BINARY)
 
 if listf == False and rename == False:
-    if Xtract:
+    if Xtract == True:
         Replace = os.open(Replace, os.O_CREAT | os.O_BINARY | os.O_WRONLY)
     else:
         Replace_Size = os.path.getsize(Replace)
         Replace = os.open(Replace, os.O_RDONLY | os.O_BINARY)
+        if add or replace:
+            Replace_data = os.read(Replace, Replace_Size)
 
 # Gather data from the FAR file
 [FileNames, FileTable_Objects, DataStart] = FARInit()
@@ -185,17 +182,17 @@ if listf == True:
 
 FoundFile = FindFile(FilePath)
 
-if Xtract:
+if Xtract == True:
     if FoundFile[0]:
         ExtractFile(Replace, FoundFile[1])
         print("File Successfully extracted")
         exit(0)
     else:
-        print("Error: File not found in archive, use '{0} -FAR {1} -ls' to list the files in the archive".format(sys.argv[0], FAR))
+        print("Error: File not found in archive, use '{0} -FAR {1} -ls' to list the files in the archive".format(sys.argv[0], parsed.FAR))
         exit(0)
 
-if add:
-    if FoundFile[0]:
+if add == True:
+    if FoundFile[0] == True:
         Replace = True
         print("File already exists, replacing instead")
     else:
@@ -207,11 +204,14 @@ if add:
         else:
             print(FileTable_Objects)
             print("oopsies")
+        exit(0)
 
-if Replace:
+if Replace == True:
+    print(FoundFile)
     ReplaceFile(FoundFile[1])
     print("File successfully replaced")
 
-if rename:
+
+if rename == True:
     RenFile(FoundFile[1])
     print("File successfully renamed")
