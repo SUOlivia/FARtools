@@ -49,11 +49,13 @@ def ExtractFile(OutPath, HeaderPosition: int):
     DataPos = DataStart + int.from_bytes(os.read(FAR, 0x08), "big")
     Compressed = True if int.from_bytes(os.read(FAR, 0x08), "big") == 0x200000000 else False
 
-    os.lseek(FAR, DataPos + 2, os.SEEK_SET)
-    FileData = os.read(FAR, size_compressed - 2)
-    
     if Compressed:
+        os.lseek(FAR, DataPos + 2, os.SEEK_SET)
+        FileData = os.read(FAR, size_compressed - 2)
         FileData = zlib.decompress(FileData, -15, size_decompressed)
+    else:
+        os.lseek(FAR, DataPos, os.SEEK_SET)
+        FileData = os.read(FAR, size_compressed)
     
     os.write(Replace, FileData)
     
@@ -220,8 +222,9 @@ FAR_Size = os.path.getsize(FAR)
 FAR = os.open(FAR, os.O_RDWR | os.O_BINARY)
 
 if listf == False and rename == False:
-    if Xtract == True:
-        Replace = os.open(Replace, os.O_CREAT | os.O_BINARY | os.O_WRONLY)
+    if Xtract == True:   
+        Replace = os.open("Extracted_" + Replace if pathlib.Path(Replace).exists() else Replace,
+                         os.O_CREAT | os.O_BINARY | os.O_WRONLY)
     else:
         Replace_Size = os.path.getsize(Replace)
         Replace = os.open(Replace, os.O_RDONLY | os.O_BINARY)
@@ -262,10 +265,9 @@ if add == True:
             print("oopsies")
         exit(0)
 
-if Replace == True:
+if replace == True:
     ReplaceFile(Replace_data, FoundFile[1])
     print("File successfully replaced")
-
 
 if rename == True:
     RenFile(FoundFile[1])
