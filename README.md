@@ -21,7 +21,7 @@ A python script to *easily* edit and read .far archives from Guitar Hero Live
 
 `-xa`   or  `--extractAll`  to extract all files from the archive
 
-`--FAR archive.far`          Archive to modify (Keep backups in case something goes wrong!!!)
+`--FAR archive.far`         Archive to modify (Keep backups in case something goes wrong!!!)
 
 `-p FilePath` or `--path FilePath` Has multiple uses depending on the other arguments
 - The path of the new file in the case of `-a`
