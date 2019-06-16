@@ -5,6 +5,8 @@ A python script to *easily* edit and read .far archives from Guitar Hero Live
 
 `-h`    or  `--help`        to show the help text
 
+`--cap` or  `--easy`        to enable cap mode, intended to be used for people who aren't familiar with the command prompt
+
 `-a`    or  `--add`         to add a new file to the archive
 
 `-rn`   or  `--rename`      to rename an already existing file in the archive
@@ -17,7 +19,7 @@ A python script to *easily* edit and read .far archives from Guitar Hero Live
 
 `-x`    or  `--extract`     to extract a file from the archive
 
-`-FAR archive.far`          Archive to modify (Keep backups in case something goes wrong!!!)
+`--FAR archive.far`          Archive to modify (Keep backups in case something goes wrong!!!)
 
 `-p FilePath` or `--path FilePath` Has multiple uses depending on the other arguments
 - The path of the new file in the case of `-a`

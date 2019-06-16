@@ -19,10 +19,11 @@ import sys
 import struct
 import argparse
 import zlib
-from pathlib import PureWindowsPath
+import pathlib
 
 args = argparse.ArgumentParser(description='Tools to easily add, replace and rename files in FAR archives.')
 
+args.add_argument('--easy', '--cap', action="store_true", default=False, dest="cap", help="Noob friendly mode that helps them do what they want (this one's for you, Cap!)")
 args.add_argument('-a', '--add', action="store_true", default=False, dest="add", help="Add a new file to the archive")
 args.add_argument('-rn', '--rename', action="store_true", default=False, dest="rename", help="Rename an already existing file in the archive")
 args.add_argument('-rp', '--replace', action="store_true", default=False, dest="replace", help="Replace an already existing file in the archine")
@@ -30,12 +31,12 @@ args.add_argument('-ls', '--listfiles', action="store_true", default=False, dest
 args.add_argument('-c', '--compress', action="store_true", default=False, dest="compress", help="Compresses files added through -a")
 args.add_argument('-x', '--extract', action="store_true", default=False, dest="Xtract", help="Extract a file from the FAR archive")
 
-args.add_argument('-FAR', action="store", dest="FAR", type=str, help="Path to the archive you want to modify")
+args.add_argument('--FAR', action="store", dest="FAR", type=str, help="Path to the archive you want to modify")
 args.add_argument('-p', '--path', action="store", dest="FilePath", type=str, help="Path of the file you want to extract/add/rename/replace in the archive")
 args.add_argument('-f', '--file', action="store", dest="Replace", type=str, help="Path to the new file (Or the new path if your are renaming)")
 args.add_argument('-o', '--output', action="store", dest="Replace", type=str, help="Path to output the extracted file")
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 2:
     args.print_help()
     exit(0)
 parsed = args.parse_args()
@@ -126,9 +127,14 @@ def FindFile(Filename):
 
 def RenFile(HeaderPos):
     os.lseek(FAR, HeaderPos, os.SEEK_SET)
-    os.write(FAR, str(PureWindowsPath(Replace)).encode('utf-8'))
+    os.write(FAR, str(pathlib.PureWindowsPath(Replace)).encode('utf-8'))
 
 def FARInit():
+    os.lseek(FAR, 0x00, os.SEEK_SET)
+    MagicWord = os.read(FAR, 0x04).decode('utf-8')
+    if MagicWord != "FSAR":
+        print("Error: The file specified with the --FAR argument isn't a far file, exitting")
+        exit(0)
     os.lseek(FAR, 0x08, os.SEEK_SET)
     DataStart = int.from_bytes(os.read(FAR, 0x04), 'big')
     FileTable_Size = DataStart - FileTable_Start
@@ -139,12 +145,55 @@ def FARInit():
     FileNames = [None] * FileTable_Objects
     i = 0
     while i < FileTable_Objects: 
-        FileNames[i] = os.read(FAR, 0x100).decode('UTF-8')
+        FileNames[i] = os.read(FAR, 0x100).decode('utf-8')  # Read the filename into the filenames list
         while FileNames[i].find('\x00') != -1:
-            FileNames[i] = FileNames[i].strip('\x00')
+            FileNames[i] = FileNames[i].strip('\x00')       # Remove all the 0x00 padding (cuz 0x00 is a valid unicode character 😡)
         os.lseek(FAR, 0x20, os.SEEK_CUR)
         i+=1
     return [FileNames, FileTable_Objects, DataStart]
+
+def CapMode():
+    print("Welcome to Cap mode!")
+    parsed.FAR = input("What's path to your far archive: ")
+    mode = input("Enter what you want to do with the archive [add/rename/replace/list files/extract]: ")
+    
+    if mode.lower() == "add":
+        parsed.Replace = input("Good! you want to add a file. Now tell me, what is the path of the file you " + 
+                               "want to add: ")
+        parsed.FilePath = input("And where do you want to add this file in the archive: ")
+        Compress = input("Do you want the newly added file to be compressed [Y/N]: ")
+        parsed.compress = True if Compress.lower() == "y" else False
+        parsed.add = True
+
+    elif mode.lower() == "replace":
+        parsed.FilePath = input("Good! you want to replace a file. Now tell me, what is the path in the " +
+                               "archive of the file you want to replace: ")
+        parsed.Replace = input("And where is the new file: ")
+        Compress = input("Do you want the new file to be compressed [Y/N]: ")
+        parsed.compress = True if Compress.lower() == "y" else False
+        parsed.replace = True
+
+    elif mode.lower() == "rename":
+        parsed.FilePath = str(pathlib.PureWindowsPath(
+                            input("Good! you want to rename a file. Now tell me, what is the path in the " + 
+                                  "archive of the file you want to rename: ")
+                             ))
+        tempPath = parsed.FilePath.rsplit("\\", 1)[1]
+        parsed.Replace = input(f"And what is the new filename for {tempPath} (With the extension): ")
+        parsed.rename = True
+
+    elif mode.lower() == "extract":
+        parsed.FilePath = input("Good! you want to extract a file. Now tell me, what is the path " + 
+                               "in the archive of the file you want to extract: ")
+        parsed.Replace = input("And where do you want to extract this file: ")
+        parsed.Xtract = True
+
+    elif mode.lower() == "list files":
+        parsed.listf = True
+        
+    
+if parsed.cap:
+    CapMode()
 
 add = parsed.add
 rename = parsed.rename
@@ -155,8 +204,12 @@ Xtract = parsed.Xtract
 
 FAR = parsed.FAR
 if listf == False:
-    FilePath = str(PureWindowsPath(parsed.FilePath))
+    FilePath = str(pathlib.PureWindowsPath(parsed.FilePath))
     Replace = parsed.Replace
+
+if rename:
+    tempPath = FilePath.rsplit("\\", 1)[0]
+    Replace = tempPath + "\\" + Replace
 
 if compressed:
     zlibcomp = zlib.compressobj(zlib.Z_BEST_COMPRESSION, zlib.DEFLATED, -15)
