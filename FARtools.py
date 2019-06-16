@@ -180,7 +180,7 @@ def CapMode():
                             input("Good! you want to rename a file. Now tell me, what is the path in the " + 
                                   "archive of the file you want to rename: ")
                              ))
-        tempPath = parsed.FilePath.rsplit("\\", 1)[1]
+        tempPath = parsed.FilePath.rsplit('\\', 1)[1] if parsed.FilePath.find('\\') != -1 else parsed.FilePath
         parsed.Replace = input(f"And what is the new filename for {tempPath} (With the extension): ")
         parsed.rename = True
 
@@ -210,8 +210,8 @@ if listf == False:
     Replace = parsed.Replace
 
 if rename:
-    tempPath = FilePath.rsplit("\\", 1)[0]
-    Replace = tempPath + "\\" + Replace
+    tempPath = FilePath.rsplit('\\', 1)[0]
+    Replace = tempPath + '\\' + Replace if FilePath.find('\\') == -1 else Replace
 
 if compressed:
     zlibcomp = zlib.compressobj(zlib.Z_BEST_COMPRESSION, zlib.DEFLATED, -15)
@@ -247,7 +247,8 @@ if Xtract == True:
         print("File Successfully extracted")
         exit(0)
     else:
-        print("Error: File not found in archive, use '{0} -FAR {1} -ls' to list the files in the archive".format(sys.argv[0], parsed.FAR))
+        print(f"Error: File not found in archive, use '{sys.argv[0]} -FAR {parsed.FAR} -ls' to list the files in " +
+              "the archive")
         exit(0)
 
 if add == True:
