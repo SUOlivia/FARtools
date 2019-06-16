@@ -29,7 +29,8 @@ args.add_argument('-rn', '--rename', action="store_true", default=False, dest="r
 args.add_argument('-rp', '--replace', action="store_true", default=False, dest="replace", help="Replace an already existing file in the archine")
 args.add_argument('-ls', '--listfiles', action="store_true", default=False, dest="listf", help="Prints the list of all the paths in the archive")
 args.add_argument('-c', '--compress', action="store_true", default=False, dest="compress", help="Compresses files added through -a")
-args.add_argument('-x', '--extract', action="store_true", default=False, dest="Xtract", help="Extract a file from the FAR archive")
+args.add_argument('-x', '--extract', action="store_true", default=False, dest="Xtract", help="Extract a file from the archive")
+args.add_argument('-xa', '--extractAll', action="store_true", default=False, dest="XAll", help="Extract all the files in the archive (-o specifies the output folder)")
 
 args.add_argument('--FAR', action="store", dest="FAR", type=str, help="Path to the archive you want to modify")
 args.add_argument('-p', '--path', action="store", dest="FilePath", type=str, help="Path of the file you want to extract/add/rename/replace in the archive")
@@ -111,7 +112,7 @@ def ReplaceFile(FileData: bytes, HeaderPos: int):
 def FindFile(Filename):
     i = 0
     while i < FileTable_Objects:
-        CurFile = FileNames[i]
+        CurFile = FilePaths[i]
         if CurFile == Filename:
             print("File Exists in FAR")
             break
@@ -144,20 +145,21 @@ def FARInit():
 
     os.lseek(FAR, FileTable_Start, os.SEEK_SET)
 
-    FileNames = [None] * FileTable_Objects
+    FilePaths = [None] * FileTable_Objects
     i = 0
     while i < FileTable_Objects: 
-        FileNames[i] = os.read(FAR, 0x100).decode('utf-8')  # Read the filename into the filenames list
-        while FileNames[i].find('\x00') != -1:
-            FileNames[i] = FileNames[i].strip('\x00')       # Remove all the 0x00 padding (cuz 0x00 is a valid unicode character 😡)
+        FilePaths[i] = os.read(FAR, 0x100).decode('utf-8')  # Read the filename into the FilePaths list
+        while FilePaths[i].find('\x00') != -1:
+            FilePaths[i] = FilePaths[i].strip('\x00')       # Remove all the 0x00 padding (cuz 0x00 is a valid unicode character 😡)
         os.lseek(FAR, 0x20, os.SEEK_CUR)
         i+=1
-    return [FileNames, FileTable_Objects, DataStart]
+    return [FilePaths, FileTable_Objects, DataStart]
 
 def CapMode():
     print("Welcome to Cap mode!")
     parsed.FAR = input("What's path to your far archive: ")
-    mode = input("Enter what you want to do with the archive [add/rename/replace/list files/extract]: ")
+    mode = input("Enter what you want to do with the archive [add/rename/replace/list files/extract" + 
+                 "/extract all files]: ")
     
     if mode.lower() == "add":
         parsed.Replace = input("Good! you want to add a file. Now tell me, what is the path of the file you " + 
@@ -190,6 +192,14 @@ def CapMode():
         parsed.Replace = input("And where do you want to extract this file: ")
         parsed.Xtract = True
 
+    elif mode.lower() == "extract all files":
+        FARName = os.path.basename(parsed.FAR)
+        FARName = FARName.rsplit('.', 1)[0]
+        parsed.Replace = input("Good! you want to extract all files. Now tell me, in which folder do you " + 
+                                "want to extract all files (or leave blank to automatically extract to the " + 
+                                f"files to the {FARName} folder): ")
+        parsed.XAll = True
+
     elif mode.lower() == "list files":
         parsed.listf = True
         
@@ -197,21 +207,30 @@ def CapMode():
 if parsed.cap:
     CapMode()
 
-add = parsed.add
-rename = parsed.rename
-replace = parsed.replace
-listf = parsed.listf
-compressed = parsed.compress
-Xtract = parsed.Xtract
+add         = parsed.add
+rename      = parsed.rename
+replace     = parsed.replace
+listf       = parsed.listf
+compressed  = parsed.compress
+Xtract      = parsed.Xtract
+XAll        = parsed.XAll
 
 FAR = parsed.FAR
-if listf == False:
+if listf == False and XAll == False:
     FilePath = str(pathlib.PureWindowsPath(parsed.FilePath))
     Replace = parsed.Replace
 
 if rename:
     tempPath = FilePath.rsplit('\\', 1)[0]
     Replace = tempPath + '\\' + Replace if FilePath.find('\\') == -1 else Replace
+
+if XAll:
+    try:
+        Replace
+    except NameError:
+        Replace = ""
+        parsed.FAR = os.path.basename(parsed.FAR)
+        parsed.FAR = parsed.FAR.rsplit('.', 1)[0]
 
 if compressed:
     zlibcomp = zlib.compressobj(zlib.Z_BEST_COMPRESSION, zlib.DEFLATED, -15)
@@ -225,21 +244,22 @@ if listf == False and rename == False:
     if Xtract == True:   
         Replace = os.open("Extracted_" + Replace if pathlib.Path(Replace).exists() else Replace,
                          os.O_CREAT | os.O_BINARY | os.O_WRONLY)
-    else:
+    elif XAll == False:
         Replace_Size = os.path.getsize(Replace)
         Replace = os.open(Replace, os.O_RDONLY | os.O_BINARY)
         if add or replace:
             Replace_data = os.read(Replace, Replace_Size)
 
 # Gather data from the FAR file
-[FileNames, FileTable_Objects, DataStart] = FARInit()
+[FilePaths, FileTable_Objects, DataStart] = FARInit()
 
 if listf == True:
-    for Filename in FileNames:
+    for Filename in FilePaths:
         print(Filename)
     exit(0)
 
-FoundFile = FindFile(FilePath)
+if XAll == False:
+    FoundFile = FindFile(FilePath)
 
 if Xtract == True:
     if FoundFile[0]:
@@ -247,9 +267,22 @@ if Xtract == True:
         print("File Successfully extracted")
         exit(0)
     else:
-        print(f"Error: File not found in archive, use '{sys.argv[0]} -FAR {parsed.FAR} -ls' to list the files in " +
-              "the archive")
+        print(f"Error: File not found in archive, use '{sys.argv[0]} -FAR {parsed.FAR} -ls' to list the files " +
+              "in the archive")
         exit(0)
+
+if XAll == True:
+    OutFolder = Replace if Replace != "" else parsed.FAR
+    i = 0
+    for path in FilePaths:
+        Curpath = OutFolder + '\\' + path
+        if pathlib.Path(Curpath.rsplit('\\', 1)[0]).is_dir() == False:
+            os.makedirs(Curpath.rsplit('\\', 1)[0])
+        Replace = os.open(Curpath, os.O_CREAT | os.O_BINARY | os.O_WRONLY)
+        ExtractFile(Replace, i * 0x120 + FileTable_Start)
+        print("Successfully extracted {0}".format(Curpath.rsplit('\\', 1)[1]))
+        i+=1
+    
 
 if add == True:
     if FoundFile[0] == True:
@@ -258,7 +291,7 @@ if add == True:
     else:
         AddFile(Replace_data)
         os.fsync(FAR)
-        [FileNames, FileTable_Objects, DataStart] = FARInit()
+        [FilePaths, FileTable_Objects, DataStart] = FARInit()
         if FindFile(FilePath)[0]:
             print("File added successfully")
         else:
