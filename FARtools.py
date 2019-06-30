@@ -78,7 +78,7 @@ def AddFile(FileData: bytes):
         i+=1
 
     Compressed_Flag = 0x200000000 if compressed else 0x100000000
-    FileData = b'\x00\x00' + zlibcomp.compress(FileData) + zlibcomp.flush() if compressed else FileData
+    FileData = b'\x78\xDA' + zlibcomp.compress(FileData) + zlibcomp.flush() if compressed else FileData
     ReplaceCompSize = len(FileData) + 2 if compressed else len(FileData)
 
     os.write(FAR, Replace_Size.to_bytes(0x08, 'big')) # Decompressed size
@@ -269,7 +269,7 @@ if Xtract == True:
     if FoundFile[0]:
         ExtractFile(Replace, FoundFile[1])
         print("File Successfully extracted")
-        print(f"Finished extracting file in {time.time() - StartTime} Seconds")
+        print(f"Finished extracting file in {(time.time() - StartTime) * 1000}ms")
         exit(0)
     else:
         print(f"Error: File not found in archive, use '{sys.argv[0]} -FAR {parsed.FAR} -ls' to list the files " +
@@ -287,7 +287,7 @@ if XAll == True:
         ExtractFile(Replace, i * 0x120 + FileTable_Start)
         print("Successfully extracted {0}".format(Curpath.rsplit('\\', 1)[1]))
         i+=1
-    print(f"Finished extracting all files in {time.time() - StartTime} Seconds")
+    print(f"Finished extracting all files in {(time.time() - StartTime) * 1000}ms")
     
 
 if add == True:
@@ -299,7 +299,7 @@ if add == True:
         os.fsync(FAR)
         [FilePaths, FileTable_Objects, DataStart] = FARInit()
         if FindFile(FilePath)[0]:
-            print(f"Finished adding the file in {time.time() - StartTime} Seconds")
+            print(f"Finished adding the file in {(time.time() - StartTime) * 1000}ms")
         else:
             print(FileTable_Objects)
             print("oopsies")
@@ -307,8 +307,8 @@ if add == True:
 
 if replace == True:
     ReplaceFile(Replace_data, FoundFile[1])
-    print(f"Finished replacing the file in {time.time() - StartTime} Seconds")
+    print(f"Finished replacing the file in {(time.time() - StartTime) * 1000}ms")
 
 if rename == True:
     RenFile(FoundFile[1])
-    print(f"Finished renaming the file in {time.time() - StartTime} Seconds")
+    print(f"Finished renaming the file in {(time.time() - StartTime) * 1000}ms")
